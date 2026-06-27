@@ -1,0 +1,164 @@
+===== qorvex start =====
+Start server, session, and agent in one step
+
+Usage: qorvex start [OPTIONS]
+
+Options:
+  -d, --device <DEVICE>  Device UDID (simulator or physical) to use for this session
+  -h, --help             Print help
+
+===== qorvex start-session =====
+Start an automation session (auto-starts agent if configured)
+
+Usage: qorvex start-session
+
+Options:
+  -h, --help  Print help
+
+===== qorvex start-target =====
+Launch the target application
+
+Usage: qorvex start-target
+
+Options:
+  -h, --help  Print help
+
+===== qorvex set-target =====
+Set the target application bundle ID
+
+Usage: qorvex set-target [OPTIONS] <BUNDLE_ID>
+
+Arguments:
+  <BUNDLE_ID>  Bundle identifier (e.g., com.example.MyApp)
+
+Options:
+      --tag <TAG>  Annotate the action log entry with a free-text tag
+  -h, --help       Print help
+
+===== qorvex boot-device =====
+Boot a device (simulator UDID for iOS, AVD name / adb serial for Android)
+
+Usage: qorvex boot-device [OPTIONS] <UDID>
+
+Arguments:
+  <UDID>  Device UDID (iOS) or AVD name / adb serial (Android)
+
+Options:
+      --platform <PLATFORM>  Target platform [default: ios] [possible values: ios, android]
+  -h, --help                 Print help
+
+===== qorvex list-devices =====
+List available devices (simulators for iOS, adb devices for Android)
+
+Usage: qorvex list-devices [OPTIONS]
+
+Options:
+      --platform <PLATFORM>  Target platform [default: ios] [possible values: ios, android]
+  -h, --help                 Print help
+
+===== qorvex use-device =====
+Select a device (simulator or physical) by UDID
+
+Usage: qorvex use-device <UDID>
+
+Arguments:
+  <UDID>  Device UDID
+
+Options:
+  -h, --help  Print help
+
+===== qorvex screenshot =====
+Capture a screenshot (outputs base64-encoded PNG)
+
+Usage: qorvex screenshot [OPTIONS]
+
+Options:
+      --tag <TAG>  Annotate the action log entry with a free-text tag
+  -h, --help       Print help
+
+===== qorvex screen-info =====
+Get UI hierarchy information
+
+Usage: qorvex screen-info [OPTIONS]
+
+Options:
+      --full       Output full raw JSON (original behavior)
+      --pretty     Output REPL-style formatted list
+      --tag <TAG>  Annotate the action log entry with a free-text tag
+  -h, --help       Print help
+
+===== qorvex send-keys =====
+Send keyboard input
+
+Usage: qorvex send-keys [OPTIONS] <TEXT>
+
+Arguments:
+  <TEXT>  Text to type
+
+Options:
+      --tag <TAG>  Annotate the action log entry with a free-text tag
+  -h, --help       Print help
+
+===== qorvex tap =====
+Tap an element by ID or label
+
+Usage: qorvex tap [OPTIONS] <SELECTOR>
+
+Arguments:
+  <SELECTOR>  The selector (accessibility ID or label)
+
+Options:
+  -l, --label                Match by accessibility label instead of ID
+  -T, --type <ELEMENT_TYPE>  Filter by element type (e.g., Button, TextField)
+      --no-wait              Skip retry, attempt tap once without waiting
+  -o, --timeout <TIMEOUT>    Timeout in milliseconds for retrying [env: QORVEX_TIMEOUT=] [default: 5000]
+      --tag <TAG>            Annotate the action log entry with a free-text tag
+  -h, --help                 Print help
+
+===== qorvex wait-for =====
+Wait for an element to appear by ID or label
+
+Usage: qorvex wait-for [OPTIONS] <SELECTOR>
+
+Arguments:
+  <SELECTOR>  The selector (accessibility ID or label)
+
+Options:
+  -l, --label                Match by accessibility label instead of ID
+  -T, --type <ELEMENT_TYPE>  Filter by element type (e.g., Button, TextField)
+  -o, --timeout <TIMEOUT>    Timeout in milliseconds [env: QORVEX_TIMEOUT=] [default: 5000]
+      --tag <TAG>            Annotate the action log entry with a free-text tag
+  -h, --help                 Print help
+
+===== qorvex get-value =====
+Get the value of an element by ID or label
+
+Usage: qorvex get-value [OPTIONS] <SELECTOR>
+
+Arguments:
+  <SELECTOR>  The selector (accessibility ID or label)
+
+Options:
+  -l, --label                Match by accessibility label instead of ID
+  -T, --type <ELEMENT_TYPE>  Filter by element type (e.g., Button, TextField)
+      --no-wait              Skip retry, attempt get-value once without waiting
+  -o, --timeout <TIMEOUT>    Timeout in milliseconds for retrying [env: QORVEX_TIMEOUT=] [default: 5000]
+      --tag <TAG>            Annotate the action log entry with a free-text tag
+  -h, --help                 Print help
+
+===== qorvex status =====
+Get current session state
+
+Usage: qorvex status
+
+Options:
+  -h, --help  Print help
+
+===== qorvex stop =====
+Stop the server for this session
+
+Usage: qorvex stop
+
+Options:
+  -h, --help  Print help
+

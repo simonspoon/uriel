@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net9.0 (plain) is a desktop-testable target for the platform-agnostic engine;
+         the -ios/-android heads carry the MAUI integration. -->
+    <TargetFrameworks>net9.0;net9.0-ios;net9.0-android</TargetFrameworks>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <!-- MAUI only on the mobile heads; plain net9.0 stays workload-free + console-runnable -->
+    <UseMaui Condition="'$(TargetFramework)' != 'net9.0'">true</UseMaui>
+
+    <!-- NuGet packaging -->
+    <PackageId>Uriel.Profiler</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>sjspoon</Authors>
+    <Description>Drop-in, release-safe runtime profiler for .NET MAUI. Streams chunked JSON-L telemetry to the console with near-zero overhead. No debugger, no source commitment.</Description>
+    <PackageTags>maui;profiling;diagnostics;ios;android;eventcounters</PackageTags>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+
+    <!-- release-safe: never gate behind DEBUG; keep symbols for stack quality -->
+    <DebugType>portable</DebugType>
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
+
+    <!-- ModuleInitializer in a library is deliberate (env autostart) -->
+    <NoWarn>$(NoWarn);CA2255</NoWarn>
+  </PropertyGroup>
+
+  <!-- MainThread / MauiAppBuilder live in this metapackage (net8+ needs it explicit) -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net9.0'">
+    <PackageReference Include="Microsoft.Maui.Controls" Version="9.0.120" />
+  </ItemGroup>
+
+  <!-- MAUI integration files compile only where MAUI types exist -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net9.0'">
+    <SupportedPlatform Include="ios" />
+    <SupportedPlatform Include="android" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net9.0'">
+    <DefineConstants>$(DefineConstants);HAS_MAUI</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <Compile Remove="MauiIntegration.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,23 @@
+# Build output
+bin/
+obj/
+*.binlog
+
+# NuGet
+*.nupkg
+*.snupkg
+
+# IDE / OS
+.vs/
+.idea/
+.DS_Store
+*.user
+
+# MAUI / mobile build artifacts
+*.app/
+*.ipa
+*.apk
+*.aab
+
+# Logs / captures
+*.console.log

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="UrielDemo.MainPage">
+
+    <ScrollView>
+        <VerticalStackLayout
+            Padding="30,40"
+            Spacing="16">
+
+            <Label
+                AutomationId="lblStatus"
+                x:Name="StatusLabel"
+                Text="ready"
+                FontSize="16"
+                HorizontalOptions="Fill" />
+
+            <Button
+                AutomationId="btnAllocate"
+                Text="Allocate"
+                Clicked="OnAllocate"
+                HorizontalOptions="Fill" />
+
+            <Button
+                AutomationId="btnThrow"
+                Text="Throw"
+                Clicked="OnThrow"
+                HorizontalOptions="Fill" />
+
+            <Button
+                AutomationId="btnHang"
+                Text="Hang"
+                Clicked="OnHang"
+                HorizontalOptions="Fill" />
+
+            <Button
+                AutomationId="btnStack"
+                Text="Capture Stack"
+                Clicked="OnCaptureStack"
+                HorizontalOptions="Fill" />
+
+            <Button
+                AutomationId="btnMark"
+                Text="Mark"
+                Clicked="OnMark"
+                HorizontalOptions="Fill" />
+
+        </VerticalStackLayout>
+    </ScrollView>
+
+</ContentPage>
