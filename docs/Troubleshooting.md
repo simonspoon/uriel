@@ -108,6 +108,6 @@ Chunks from different records can interleave on the wire — that's fine. Reasse
 
 ---
 
-Still stuck? Check the [test report](../TEST_REPORT.md) for a known-good capture to compare against.
+Still stuck? Check the [test report](TEST_REPORT.md) for a known-good capture to compare against.
 
 Next: [Glossary →](Glossary.md)

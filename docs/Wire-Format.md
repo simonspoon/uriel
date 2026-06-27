@@ -88,7 +88,7 @@ The desktop harness sets `MaxChunkBytes = 220` *on purpose* to force splits. One
 {"t":1719400000123,"k":"stack","n":"round-3","v":0,"x":"   at ...","seq":30}
 ```
 
-> **Integrity, measured:** the [test report](../TEST_REPORT.md) reassembled iOS (368 chunks→366 records) and Android (297→294) with **0 missing seqs**. The chunk-count > record-count gap is exactly the multi-chunk records rejoining.
+> **Integrity, measured:** the [test report](TEST_REPORT.md) reassembled iOS (368 chunks→366 records) and Android (297→294) with **0 missing seqs**. The chunk-count > record-count gap is exactly the multi-chunk records rejoining.
 
 ---
 

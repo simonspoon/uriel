@@ -15,7 +15,7 @@ The single most important thing to understand: **iOS and Android run Mono; deskt
 
 ## Feature × platform matrix
 
-From the live [test report](../TEST_REPORT.md) (v0.1.0). ✅ confirmed live · ⚪ absent **by design**.
+From the live [test report](TEST_REPORT.md) (v0.1.0). ✅ confirmed live · ⚪ absent **by design**.
 
 | Feature | Channel | Desktop (CoreCLR) | iOS (Mono) | Android (Mono) |
 |---|---|:--:|:--:|:--:|

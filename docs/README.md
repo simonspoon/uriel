@@ -35,6 +35,7 @@ builder.UseUriel(o => { o.Channels = Channels.All; o.CounterIntervalSec = 1; });
 | [Platform Support](Platform-Support.md) | "Why is counter X missing on iOS?" |
 | [Performance](Performance.md) | "Is this safe to ship in release?" |
 | [Demo & Validation](Demo-and-Validation.md) | Run the sample app / reproduce the test report |
+| [Test Report](TEST_REPORT.md) | Live iOS+Android validation results (v0.1.0, zero loss) |
 | [Troubleshooting](Troubleshooting.md) | Something's not showing up |
 | [Glossary](Glossary.md) | Unfamiliar term |
 

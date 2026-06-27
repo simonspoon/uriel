@@ -2,7 +2,7 @@
 
 [← Performance](Performance.md) · [Wiki home](README.md) · Next: [Troubleshooting →](Troubleshooting.md)
 
-Two runnable samples + the automation scripts that produced the [test report](../TEST_REPORT.md).
+Two runnable samples + the automation scripts that produced the [test report](TEST_REPORT.md).
 
 ---
 
@@ -97,7 +97,7 @@ grep '@@URIEL@@' /tmp/uriel.logcat.log | python3 tools/uriel_parse.py
 | iOS | Mono | iPhone 16 Pro sim · iOS 18.0 | 368 | 366 | **0** |
 | Android | Mono | Pixel_4a_API_33 emu | 297 | 294 | **0** |
 
-Full detail + real captured records: [`TEST_REPORT.md`](../TEST_REPORT.md).
+Full detail + real captured records: [`TEST_REPORT.md`](TEST_REPORT.md).
 
 ---
 
