@@ -10,6 +10,14 @@ Mobile MAUI profiling tooling is thin. Uriel collects memory/GC telemetry
 in-process, in release, with negligible cost, and forwards it (plus on-event
 exception/hang stacks) out the one channel you can always read: the console.
 
+## 📚 Documentation
+
+Full user wiki in **[`docs/`](docs/README.md)** — start at the [home page](docs/README.md).
+Quick links: [Getting Started](docs/Getting-Started.md) · [Configuration](docs/Configuration.md) ·
+[Channels](docs/Channels.md) · [Reading the Stream](docs/Reading-the-Stream.md) ·
+[Wire Format](docs/Wire-Format.md) · [Platform Support](docs/Platform-Support.md) ·
+[Troubleshooting](docs/Troubleshooting.md).
+
 **Counter sources — two, by necessity:**
 - `GcPollSampler` polls the always-available `GC.*` APIs on a timer. This is the
   reliable path **on every target, including iOS and Android** (both run Mono).
