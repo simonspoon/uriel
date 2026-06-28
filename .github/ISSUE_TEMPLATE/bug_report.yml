@@ -1,0 +1,58 @@
+name: Bug report
+description: Something in Uriel.Profiler isn't working as expected.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Please don't paste secrets — profiler output can
+        include method/parameter names from your app.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps. A snippet of your `UseUriel(...)` config helps.
+      placeholder: |
+        1. builder.UseUriel(o => { ... })
+        2. Run on ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - iOS (device)
+        - iOS (simulator)
+        - Android (device)
+        - Android (emulator)
+        - Desktop / net9.0
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Uriel.Profiler version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: dotnet
+    attributes:
+      label: .NET SDK / MAUI version
+      placeholder: "dotnet --version, MAUI workload version"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant console/logcat output
+      description: Raw `@@URIEL@@` lines or parsed records, if any.
+      render: text

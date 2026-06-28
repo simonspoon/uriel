@@ -1,0 +1,64 @@
+# Release & publish.
+#
+# To cut a release:
+#   1. Bump <Version> in src/Uriel/Uriel.csproj and add a CHANGELOG.md entry.
+#   2. Commit, then tag:  git tag v0.1.0 && git push origin v0.1.0
+#   3. This workflow verifies the tag == <Version>, packs, pushes to NuGet.org,
+#      and creates a GitHub Release with the .nupkg/.snupkg attached.
+#
+# One-time setup: add a repository secret named NUGET_API_KEY
+# (NuGet.org > API Keys > scope: Push, glob: Uriel.Profiler*).
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # create the GitHub Release
+
+jobs:
+  release:
+    # macOS runner: it carries the Apple toolchain needed to build the
+    # net9.0-ios head, and the Android SDK/JDK for net9.0-android.
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install MAUI workload
+        run: dotnet workload install maui
+
+      - name: Verify tag matches csproj <Version>
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          ver="$(sed -n 's/.*<Version>\(.*\)<\/Version>.*/\1/p' src/Uriel/Uriel.csproj | head -n1)"
+          echo "tag=$tag  csproj=$ver"
+          if [ "$tag" != "$ver" ]; then
+            echo "::error::tag v$tag does not match csproj <Version>$ver"
+            exit 1
+          fi
+
+      - name: Pack
+        run: dotnet pack src/Uriel/Uriel.csproj -c Release -o artifacts
+
+      - name: Push to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: >-
+          dotnet nuget push "artifacts/*.nupkg"
+          --api-key "$NUGET_API_KEY"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg

@@ -1,8 +1,20 @@
 # Uriel.Profiler
 
+[![NuGet](https://img.shields.io/nuget/v/Uriel.Profiler.svg)](https://www.nuget.org/packages/Uriel.Profiler)
+[![CI](https://github.com/simonspoon/uriel/actions/workflows/ci.yml/badge.svg)](https://github.com/simonspoon/uriel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Drop-in, **release-safe** runtime profiler for .NET MAUI (iOS + Android).
 Streams chunked **JSON-L** telemetry to the console with near-zero overhead.
 No debugger, no `#if DEBUG`, no source commitment — pull the NuGet, flip it on.
+
+## Install
+
+```bash
+dotnet add package Uriel.Profiler
+```
+
+Then activate it (see below). Requires .NET 9 / .NET MAUI.
 
 ## Why
 
@@ -120,3 +132,15 @@ v0.1 — validated end-to-end on iOS simulator via `qorvex` automation.
 Memory = managed heap / GC (poll sampler) + desktop EventCounters bonus.
 Native RSS (true process memory via mach/Android P/Invoke) and full GC-event
 decoding are the next pass.
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
+
+## Contributing
+
+Issues and PRs welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[Code of Conduct](CODE_OF_CONDUCT.md). For security reports, see
+[SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE) © Simon Spoon

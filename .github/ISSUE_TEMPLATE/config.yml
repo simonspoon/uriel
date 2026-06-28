@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question / usage help
+    url: https://github.com/simonspoon/uriel/discussions
+    about: Ask and answer usage questions in Discussions.
+  - name: Documentation
+    url: https://github.com/simonspoon/uriel/blob/main/docs/README.md
+    about: Start with the user wiki — many questions are answered there.
+  - name: Security vulnerability
+    url: https://github.com/simonspoon/uriel/security/advisories/new
+    about: Report security issues privately (do not open a public issue).

@@ -14,12 +14,28 @@
 
     <!-- NuGet packaging -->
     <PackageId>Uriel.Profiler</PackageId>
+    <Title>Uriel.Profiler</Title>
     <Version>0.1.0</Version>
     <Authors>sjspoon</Authors>
+    <Company>sjspoon</Company>
+    <Copyright>Copyright (c) 2026 Simon Spoon</Copyright>
     <Description>Drop-in, release-safe runtime profiler for .NET MAUI. Streams chunked JSON-L telemetry to the console with near-zero overhead. No debugger, no source commitment.</Description>
     <PackageTags>maui;profiling;diagnostics;ios;android;eventcounters</PackageTags>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/simonspoon/uriel</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/simonspoon/uriel</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReleaseNotes>See CHANGELOG.md: https://github.com/simonspoon/uriel/blob/main/CHANGELOG.md</PackageReleaseNotes>
+
+    <!-- Symbols + Source Link: debuggable package, source-stepping into the lib -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 
     <!-- release-safe: never gate behind DEBUG; keep symbols for stack quality -->
     <DebugType>portable</DebugType>
@@ -48,6 +64,11 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <!-- Source Link: maps PDBs to the public GitHub repo for source-stepping -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
 </Project>

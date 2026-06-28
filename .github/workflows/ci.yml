@@ -1,0 +1,30 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build engine (net9.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # The plain net9.0 target is the platform-agnostic engine — it needs no
+      # MAUI workload, so PRs get a fast signal. The -ios/-android heads are
+      # exercised by the release pack and by on-device validation (see docs/).
+      - name: Build engine
+        run: dotnet build src/Uriel/Uriel.csproj -f net9.0 -c Release
+
+      - name: Build console harness
+        run: dotnet build samples/Harness/Harness.csproj -c Release
