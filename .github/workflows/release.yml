@@ -6,8 +6,10 @@
 #   3. This workflow verifies the tag == <Version>, packs, pushes to NuGet.org,
 #      and creates a GitHub Release with the .nupkg/.snupkg attached.
 #
-# One-time setup: add a repository secret named NUGET_API_KEY
-# (NuGet.org > API Keys > scope: Push, glob: Uriel.Profiler*).
+# One-time setup: register a Trusted Publishing policy on NuGet.org
+# (Account > Trusted Publishing > New: owner=<gh-user/org>, repo=uriel,
+#  workflow=release.yml, package glob=Uriel.Profiler*). No secret to store —
+#  CI mints a short-lived, single-use API key from a GitHub OIDC token.
 
 name: release
 
@@ -17,6 +19,7 @@ on:
 
 permissions:
   contents: write   # create the GitHub Release
+  id-token: write   # mint the OIDC token for Trusted Publishing
 
 jobs:
   release:
@@ -46,12 +49,16 @@ jobs:
       - name: Pack
         run: dotnet pack src/Uriel/Uriel.csproj -c Release -o artifacts
 
+      - name: NuGet login (Trusted Publishing)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: simonspoon
+
       - name: Push to NuGet.org
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: >-
           dotnet nuget push "artifacts/*.nupkg"
-          --api-key "$NUGET_API_KEY"
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
 
