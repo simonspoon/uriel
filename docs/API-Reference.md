@@ -91,14 +91,16 @@ public readonly struct Record
 
 ## Zero-code activation — [source](../src/Uriel/AutoStart.cs)
 
-Not an API call — an **env var**. `[ModuleInitializer]` checks `URIEL_AUTOSTART`:
+**Reliable:** set `<UrielAutoStart>true</UrielAutoStart>` in the app's project file. The package's `buildTransitive` targets generate a `[ModuleInitializer]` in your app assembly that calls `UrielProfiler.Start()` — defaults only: don't combine it with `UseUriel(configure)`/`Start(configure)` (the first `Start` wins, so your options would be ignored). C# projects only.
+
+**Env var:** Uriel's own `[ModuleInitializer]` checks `URIEL_AUTOSTART`:
 
 | Value | Result |
 |---|---|
 | `1`, `true`, `TRUE`, `yes`, `on` | `UrielProfiler.Start()` with defaults |
 | empty / unset / anything else | no-op |
 
-> Best-effort only (module init runs only when the assembly is touched). Prefer `UseUriel`. See [Troubleshooting](Troubleshooting.md#env-autostart-didnt-fire).
+> Env var alone is best-effort (module init runs only when the Uriel assembly is touched). Prefer `UseUriel` or `UrielAutoStart`. See [Troubleshooting](Troubleshooting.md#env-autostart-didnt-fire).
 
 ---
 

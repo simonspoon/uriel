@@ -12,6 +12,7 @@ public static class UrielProfiler
     private static RuntimeCounterListener? _counters;
     private static GcPollSampler? _poll;
     private static EventHooks? _hooks;
+    private static GcEventSampler? _gc;
     private static bool _started;
 
     /// <summary>True once Start has run. Subsequent Start calls are no-ops.</summary>
@@ -39,6 +40,9 @@ public static class UrielProfiler
                 _poll = new GcPollSampler(_sink, opt.CounterIntervalSec);
                 _counters = new RuntimeCounterListener(_sink, opt.CounterIntervalSec);
             }
+
+            if (opt.Channels.HasFlag(Channels.Gc))
+                _gc = new GcEventSampler(_sink);
 
             if (opt.Channels.HasFlag(Channels.Exceptions) || opt.Channels.HasFlag(Channels.Hangs))
                 _hooks = new EventHooks(_sink, opt);
@@ -73,8 +77,9 @@ public static class UrielProfiler
             _counters?.Dispose();
             _poll?.Dispose();
             _hooks?.Dispose();
+            _gc?.Dispose();
             _sink?.Dispose();
-            _counters = null; _poll = null; _hooks = null; _sink = null;
+            _counters = null; _poll = null; _hooks = null; _gc = null; _sink = null;
             _started = false;
         }
     }

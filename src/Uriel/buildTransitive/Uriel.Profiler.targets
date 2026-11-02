@@ -1,0 +1,30 @@
+<Project>
+  <!--
+    Zero-code activation. In the APP's project file:
+        <PropertyGroup><UrielAutoStart>true</UrielAutoStart></PropertyGroup>
+    and the build injects a [ModuleInitializer] into that assembly that calls
+    Uriel.UrielProfiler.Start() with defaults — no call site in app code.
+    Off unless the property is set, so referencing the package changes nothing.
+  -->
+  <Target Name="UrielGenerateAutoStart"
+          BeforeTargets="CoreCompile"
+          Condition="'$(UrielAutoStart)' == 'true' and '$(Language)' == 'C#'">
+    <PropertyGroup>
+      <_UrielAutoStartFile>$(IntermediateOutputPath)UrielAutoStart.g.cs</_UrielAutoStartFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <_UrielAutoStartLine Include="// &lt;auto-generated /&gt; by Uriel.Profiler (UrielAutoStart=true)" />
+      <_UrielAutoStartLine Include="#pragma warning disable CA2255" />
+      <_UrielAutoStartLine Include="internal static class __UrielAutoStart" />
+      <_UrielAutoStartLine Include="{" />
+      <_UrielAutoStartLine Include="    [global::System.Runtime.CompilerServices.ModuleInitializer]" />
+      <_UrielAutoStartLine Include="    internal static void Init() { try { global::Uriel.UrielProfiler.Start()%3B } catch { } }" />
+      <_UrielAutoStartLine Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(_UrielAutoStartFile)" Lines="@(_UrielAutoStartLine)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <Compile Include="$(_UrielAutoStartFile)" />
+      <FileWrites Include="$(_UrielAutoStartFile)" />
+    </ItemGroup>
+  </Target>
+</Project>

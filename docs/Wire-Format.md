@@ -9,17 +9,18 @@ How a `Record` becomes bytes on the console, and how to turn it back. Engine: [`
 ## One line per chunk
 
 ```
-@@URIEL@@ {"s":1042,"c":[1,3],"d":"<base64 fragment of inner json>"}
-└───┬───┘ └┬┘      └─┬─┘ └─┬─┘
- sentinel  s         c     d
- (ASCII    seq #   chunk    base64 fragment of the inner JSON
-  grep     (per    [index,  (concat all fragments of one seq, then b64-decode)
-  marker)  record) total]
+@@URIEL@@ {"p":"9f3a01c2","s":1042,"c":[1,3],"d":"<base64 fragment of inner json>"}
+└───┬───┘ └──────┬──────┘ └┬┘      └─┬─┘ └─┬─┘
+ sentinel        p          s         c     d
+ (ASCII     per-process   seq #   chunk    base64 fragment of the inner JSON
+  grep      nonce         (per    [index,  (concat all fragments of one (p, seq),
+  marker)                 record) total]    then b64-decode)
 ```
 
 | Envelope field | Meaning |
 |---|---|
-| `s` | sequence number — unique per **record**, shared across its chunks |
+| `p` | per-process nonce (8 hex chars), random each launch (and each `Stop()`→`Start()`). `s` restarts at 1 with it, so key on `(p, s)` when one capture spans several launches. Absent in v0.1.0 streams |
+| `s` | sequence number — unique per **record** within a process, shared across its chunks |
 | `c` | `[i, n]` — this is chunk **i of n** |
 | `d` | base64 fragment of the inner JSON |
 
@@ -50,7 +51,7 @@ Hand-rolled JSON — no serializer reflection, deterministic field order, minima
 | `sid` | only if `SessionId` set | session id |
 | `x` | only if present | text / message / stack |
 
-> `parse.py` adds a `seq` field (= envelope `s`) to each emitted record so you can spot loss.
+> `parse.py` adds `seq` (= envelope `s`) and `proc` (= envelope `p`) to each emitted record so you can spot loss and split launches. Records lost to drop-on-full don't leave seq gaps (seq is assigned at write time); they're reported as a `meta` `dropped-records` record.
 
 ---
 
@@ -58,14 +59,14 @@ Hand-rolled JSON — no serializer reflection, deterministic field order, minima
 
 ```
 for each line:
-    find sentinel (or fallback: locate `{"s":` directly)   ← os_log-mangle recovery
-    parse envelope → s, [i,n], d
-    buffer[s].parts[i] = d
-    if buffer[s] has all n parts:
+    find sentinel (or fallback: locate `{"p":` / `{"s":` directly)   ← os_log-mangle recovery
+    parse envelope → p, s, [i,n], d
+    buffer[(p,s)].parts[i] = d
+    if buffer[(p,s)] has all n parts:
         b64   = concat parts in order 1..n
         inner = base64decode(b64) as utf-8
-        emit inner (+ seq=s)
-        drop buffer[s]
+        emit inner (+ seq=s, proc=p)
+        drop buffer[(p,s)]
 ```
 
 That's exactly what [`uriel_parse.py`](../tools/uriel_parse.py) does. Truncated/malformed chunks are skipped; the seq gap reveals the loss.
@@ -77,11 +78,11 @@ That's exactly what [`uriel_parse.py`](../tools/uriel_parse.py) does. Truncated/
 The desktop harness sets `MaxChunkBytes = 220` *on purpose* to force splits. One stack record `s:30` arrived as 5 chunks and rejoined with no gap:
 
 ```
-@@URIEL@@ {"s":30,"c":[1,5],"d":"eyJ0Ijox..."}
-@@URIEL@@ {"s":30,"c":[2,5],"d":"NzE5NDAw..."}
-@@URIEL@@ {"s":30,"c":[3,5],"d":"MDEyMywi..."}
-@@URIEL@@ {"s":30,"c":[4,5],"d":"ayI6InN0..."}
-@@URIEL@@ {"s":30,"c":[5,5],"d":"YWNrIn0="}
+@@URIEL@@ {"p":"9f3a01c2","s":30,"c":[1,5],"d":"eyJ0Ijox..."}
+@@URIEL@@ {"p":"9f3a01c2","s":30,"c":[2,5],"d":"NzE5NDAw..."}
+@@URIEL@@ {"p":"9f3a01c2","s":30,"c":[3,5],"d":"MDEyMywi..."}
+@@URIEL@@ {"p":"9f3a01c2","s":30,"c":[4,5],"d":"ayI6InN0..."}
+@@URIEL@@ {"p":"9f3a01c2","s":30,"c":[5,5],"d":"YWNrIn0="}
                                    │
                   group by s=30, order by c[0], concat d, b64-decode
                                    ▼
@@ -95,12 +96,12 @@ The desktop harness sets `MaxChunkBytes = 220` *on purpose* to force splits. One
 ## Size budget (how chunk count is computed)
 
 ```
-env    = Sentinel.Length + 40          // ' {"s":N,"c":[i,n],"d":""}' slack
+env    = Sentinel.Length + 56          // ' {"p":"xxxxxxxx","s":N,"c":[i,n],"d":""}' slack
 budget = max(64, MaxChunkBytes - env)  // bytes of base64 per chunk
 n      = ceil(b64.Length / budget)     // number of chunks
 ```
 
-So with the default 800 and the 9-char sentinel, each chunk carries ~751 base64 chars.
+So with the default 800 and the 9-char sentinel, each chunk carries ~735 base64 chars.
 
 ---
 
@@ -108,9 +109,9 @@ So with the default 800 and the 9-char sentinel, each chunk carries ~751 base64 
 
 You don't need `uriel_parse.py` — any language can do it. Minimum viable consumer:
 
-1. Read lines, keep those containing your `Sentinel` (or fall back to `{"s":`).
+1. Read lines, keep those containing your `Sentinel` (or fall back to `{"p":`, or `{"s":` for v0.1.0 streams).
 2. JSON-parse the envelope after the sentinel; trim trailing log noise after the last `}`.
-3. Bucket fragments by `s`; once you have all `n`, concat by `c[0]`, base64-decode.
+3. Bucket fragments by `(p, s)`; once you have all `n`, concat by `c[0]`, base64-decode.
 4. The result is the inner record JSON above.
 
 ---

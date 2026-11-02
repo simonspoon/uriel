@@ -9,8 +9,9 @@ namespace Uriel;
 /// and writes to the console. Nothing on the caller's thread blocks or allocates much.
 ///
 /// Wire format, one line per chunk:
-///   §URIEL§ {"s":1042,"c":[1,3],"d":"&lt;base64 fragment of inner json&gt;"}
-/// Reassemble: group by s, order by c[0], concat d, base64-decode → inner JSON record.
+///   §URIEL§ {"p":"9f3a01c2","s":1042,"c":[1,3],"d":"&lt;base64 fragment of inner json&gt;"}
+/// Reassemble: group by (p, s), order by c[0], concat d, base64-decode → inner JSON record.
+/// p is a per-process nonce so one capture spanning several launches doesn't mix sessions.
 /// Base64 keeps fragments ASCII-safe (logcat-proof) and avoids nested-escaping pain.
 /// </summary>
 internal sealed class ChunkedConsoleSink : IDisposable
@@ -19,6 +20,9 @@ internal sealed class ChunkedConsoleSink : IDisposable
     private readonly UrielOptions _opt;
     private readonly Task _pump;
     private long _seq;
+    private long _dropped;          // records lost to drop-on-full since the last report
+    private long _lastDropCheckMs;
+    private readonly string _proc = Random.Shared.Next().ToString("x8");
 
     public ChunkedConsoleSink(UrielOptions opt)
     {
@@ -28,7 +32,7 @@ internal sealed class ChunkedConsoleSink : IDisposable
             FullMode = BoundedChannelFullMode.DropWrite,   // never block the app; we'd rather lose a sample
             SingleReader = true,
             SingleWriter = false,
-        });
+        }, itemDropped: _ => Interlocked.Increment(ref _dropped));   // DropWrite still returns true from TryWrite
         _pump = Task.Factory.StartNew(PumpAsync, TaskCreationOptions.LongRunning).Unwrap();
     }
 
@@ -49,8 +53,30 @@ internal sealed class ChunkedConsoleSink : IDisposable
             {
                 try { WriteRecord(stdout, sb, rec); }
                 catch { /* a profiler must never crash its host */ }
+                ReportDropped(stdout, sb, force: false);
             }
+            ReportDropped(stdout, sb, force: true);
         }
+    }
+
+    /// <summary>
+    /// Surface drop-on-full: at most once a second while draining (or whenever the queue
+    /// empties), write a meta "dropped-records" with the count lost since the last report.
+    /// Written directly, not enqueued — the queue is the thing that's full.
+    /// </summary>
+    private void ReportDropped(TextWriter o, StringBuilder sb, bool force)
+    {
+        if (Interlocked.Read(ref _dropped) == 0) return;
+        long now = Environment.TickCount64;
+        if (!force && now - _lastDropCheckMs < 1000) return;
+        _lastDropCheckMs = now;
+        long n = Interlocked.Exchange(ref _dropped, 0);
+        try
+        {
+            WriteRecord(o, sb, new Record(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                RecKind.Meta, "dropped-records", n));
+        }
+        catch { /* best effort */ }
     }
 
     private void WriteRecord(TextWriter o, StringBuilder sb, in Record rec)
@@ -61,7 +87,7 @@ internal sealed class ChunkedConsoleSink : IDisposable
         string b64 = Convert.ToBase64String(raw);
 
         // budget for the base64 payload after the envelope overhead
-        int env = _opt.Sentinel.Length + 40;          // " {\"s\":N,\"c\":[i,n],\"d\":\"\"}" slack
+        int env = _opt.Sentinel.Length + 56;          // " {\"p\":\"xxxxxxxx\",\"s\":N,\"c\":[i,n],\"d\":\"\"}" slack
         int budget = Math.Max(64, _opt.MaxChunkBytes - env);
         int n = (b64.Length + budget - 1) / budget;
         if (n <= 0) n = 1;
@@ -71,7 +97,7 @@ internal sealed class ChunkedConsoleSink : IDisposable
             int start = i * budget;
             int len = Math.Min(budget, b64.Length - start);
             string frag = b64.Substring(start, len);
-            o.WriteLine($"{_opt.Sentinel} {{\"s\":{seq},\"c\":[{i + 1},{n}],\"d\":\"{frag}\"}}");
+            o.WriteLine($"{_opt.Sentinel} {{\"p\":\"{_proc}\",\"s\":{seq},\"c\":[{i + 1},{n}],\"d\":\"{frag}\"}}");
         }
     }
 

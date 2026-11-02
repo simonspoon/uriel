@@ -64,6 +64,8 @@
 
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <!-- opt-in build-time activation for consuming apps (UrielAutoStart=true) -->
+    <None Include="buildTransitive/Uriel.Profiler.targets" Pack="true" PackagePath="buildTransitive/" />
   </ItemGroup>
 
   <!-- Source Link: maps PDBs to the public GitHub repo for source-stepping -->

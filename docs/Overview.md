@@ -75,7 +75,7 @@ There are **two** counter sources, and which one works depends on the runtime:
         │   4. Console.WriteLine each chunk              │
         └───────────────────────┬───────────────────────┘
                                 ▼
-              @@URIEL@@ {"s":1042,"c":[1,3],"d":"<base64>"}      ← on the wire
+              @@URIEL@@ {"p":"9f3a01c2","s":1042,"c":[1,3],"d":"<base64>"}  ← on the wire
                                 │
                   os_log (iOS) / logcat tag DOTNET (Android) / stdout (desktop)
                                 ▼
@@ -95,8 +95,10 @@ There are **two** counter sources, and which one works depends on the runtime:
 | [`GcPollSampler.cs`](../src/Uriel/GcPollSampler.cs) | **cross-platform** counter source (polls `GC.*`) |
 | [`RuntimeCounterListener.cs`](../src/Uriel/RuntimeCounterListener.cs) | **desktop-bonus** counter source (EventCounters) |
 | [`EventHooks.cs`](../src/Uriel/EventHooks.cs) | exceptions + UI-thread hang watchdog |
+| [`GcEventSampler.cs`](../src/Uriel/GcEventSampler.cs) | `Channels.Gc`: one record per GC (finalizer sentinel) |
+| [`buildTransitive/Uriel.Profiler.targets`](../src/Uriel/buildTransitive/Uriel.Profiler.targets) | `UrielAutoStart=true` → build injects the `Start()` call |
 | [`MauiIntegration.cs`](../src/Uriel/MauiIntegration.cs) | `builder.UseUriel(…)` one-liner |
-| [`AutoStart.cs`](../src/Uriel/AutoStart.cs) | `URIEL_AUTOSTART=1` env activation (best-effort) |
+| [`AutoStart.cs`](../src/Uriel/AutoStart.cs) | `URIEL_AUTOSTART=1` env activation (best-effort; needs the assembly loaded) |
 
 ---
 

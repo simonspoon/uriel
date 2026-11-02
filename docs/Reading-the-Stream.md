@@ -84,7 +84,7 @@ adb logcat | grep '@@URIEL@@' | python3 tools/uriel_parse.py
 
 On the wire (before reassembly):
 ```
-I/DOTNET ( 13918): @@URIEL@@ {"s":1,"c":[1,1],"d":"eyJ0IjoxNzgyNTg0OTU2MDU1LCJrIjoibWV0YSIs..."}
+I/DOTNET ( 13918): @@URIEL@@ {"p":"9f3a01c2","s":1,"c":[1,1],"d":"eyJ0IjoxNzgyNTg0OTU2MDU1LCJrIjoibWV0YSIs..."}
 ```
 
 > ⚠️ **Self-contained APK required.** A bare `adb install` of a Debug *fast-deploy* APK **SIGABRTs** (*"No assemblies found … Fast Deployment"*). Build with `-p:EmbedAssembliesIntoApk=true` or `dotnet build -t:Install`. See [Troubleshooting](Troubleshooting.md#android-app-crashes-on-launch-sigabrt).

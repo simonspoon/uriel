@@ -8,7 +8,7 @@ public enum Channels
     Counters    = 1 << 0,   // System.Runtime EventCounters (cheap, periodic)
     Exceptions  = 1 << 1,   // first-chance + unhandled, with stack
     Hangs       = 1 << 2,   // UI-thread watchdog, stack on stall
-    Gc          = 1 << 3,   // gc summaries (heavier; opt-in)
+    Gc          = 1 << 3,   // one record per GC (gen counts, heap, pause); opt-in
 
     Default     = Counters | Exceptions | Hangs,
     All         = Counters | Exceptions | Hangs | Gc,
@@ -27,6 +27,12 @@ public sealed class UrielOptions
 
     /// <summary>Suppress hang reports for this long after Start — the UI thread is busy booting.</summary>
     public int HangStartupGraceMs { get; set; } = 3000;
+
+    /// <summary>First-chance exceptions: capture Environment.StackTrace for the first N of each type+message.</summary>
+    public int ExceptionStackLimit { get; set; } = 5;
+
+    /// <summary>First-chance exceptions: full records per second per type; beyond that they're counted per type ("first-chance-suppressed").</summary>
+    public int ExceptionMaxPerSec { get; set; } = 20;
 
     /// <summary>Max queued records before drop-on-full kicks in. Bounds memory + back-pressure.</summary>
     public int QueueCapacity { get; set; } = 8192;

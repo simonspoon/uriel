@@ -16,7 +16,7 @@ All config lives in [`UrielOptions`](../src/Uriel/UrielOptions.cs). You set it i
 | `Counters` | `1<<0` | poll sampler (+ desktop EventCounters) | periodic, very low |
 | `Exceptions` | `1<<1` | first-chance + unhandled, with stack | on event |
 | `Hangs` | `1<<2` | UI-thread heartbeat watchdog | on event |
-| `Gc` | `1<<3` | gc summaries (heavier) | burst |
+| `Gc` | `1<<3` | one record per GC (generation, heap, pause) | per GC |
 | **`Default`** | — | `Counters \| Exceptions \| Hangs` | the everyday set |
 | **`All`** | — | `Default \| Gc` | everything |
 
@@ -25,7 +25,7 @@ o.Channels = Channels.Counters | Channels.Exceptions;   // compose à la carte
 o.Channels = Channels.Default;                           // or use a preset
 ```
 
-> `Gc` is the only one **not** in `Default` — it's opt-in because it's heavier.
+> `Gc` is the only one **not** in `Default` — it's opt-in because it writes a record per collection.
 
 ---
 
@@ -37,7 +37,9 @@ o.Channels = Channels.Default;                           // or use a preset
 | `CounterIntervalSec` | `double` | `1.0` | poll/EventCounter interval (sec). Higher = cheaper | noisy stream → raise to 2–5; fine detail → lower |
 | `HangThresholdMs` | `int` | `250` | UI stall (ms) that counts as a hang | false hangs → raise; want stricter → lower |
 | `HangStartupGraceMs` | `int` | `3000` | suppress hang reports this long after `Start` (UI busy booting) | slow cold start → raise |
-| `QueueCapacity` | `int` | `8192` | max queued records before **drop-on-full** | very bursty → raise (costs memory) |
+| `ExceptionStackLimit` | `int` | `5` | first-chance: capture `Environment.StackTrace` for the first N of each type+message (`0` = never) | need stacks for repeats → raise |
+| `ExceptionMaxPerSec` | `int` | `20` | first-chance: full records per second per type; the rest become `first-chance-suppressed` counts | exception storm flooding the log → lower |
+| `QueueCapacity` | `int` | `8192` | max queued records before **drop-on-full** (reported as `dropped-records`) | very bursty → raise (costs memory) |
 | `MaxChunkBytes` | `int` | `800` | max UTF-8 bytes per console line before chunking | see warning below |
 | `Sentinel` | `string` | `"@@URIEL@@"` | grep marker prefixed to every line. **Must be ASCII** | rarely — match it in your parser |
 | `SessionId` | `string?` | `null` | run id stamped on every record (`sid`) | correlating multiple runs |
@@ -59,7 +61,7 @@ Sized for **iOS `os_log`**, the *tightest* console — it truncates/corrupts lon
 ### `Sentinel` (default `@@URIEL@@`) — keep it ASCII
 iOS routes `Console` through `os_log`, which **mangles multibyte UTF-8** (e.g. `§` = `C2A7`) on long lines — that would break a literal `grep`. The default is plain ASCII for exactly this reason.
 
-> If you change it, change `--sentinel` in [`uriel_parse.py`](../tools/uriel_parse.py) to match. The parser also has a fallback that finds the `{"s":` envelope directly if the sentinel gets mangled.
+> If you change it, change `--sentinel` in [`uriel_parse.py`](../tools/uriel_parse.py) to match. The parser also has a fallback that finds the `{"p":` (or v0.1.0 `{"s":`) envelope directly if the sentinel gets mangled.
 
 ---
 

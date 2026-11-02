@@ -21,7 +21,7 @@ Symptom → cause → fix. Most "missing data" issues are **documented platform 
 
 `URIEL_AUTOSTART=1` is **best-effort**. A `[ModuleInitializer]` only runs once *something* in the Uriel assembly is loaded/touched. If you reference the package but never call into it, the module may never initialize.
 
-✅ **Fix:** use `builder.UseUriel(...)` (or any `UrielProfiler.*` call). That's the reliable activation. ([AutoStart source](../src/Uriel/AutoStart.cs))
+✅ **Fix:** use `builder.UseUriel(...)` (or any `UrielProfiler.*` call), or set `<UrielAutoStart>true</UrielAutoStart>` in the app's project file to have the build inject the call. Those are the reliable activations. ([AutoStart source](../src/Uriel/AutoStart.cs))
 
 ---
 
@@ -41,7 +41,7 @@ Symptom → cause → fix. Most "missing data" issues are **documented platform 
 
 ## Exception records have a message but no stack (Mono)
 
-**Expected.** A first-chance exception that's caught immediately has a **null `StackTrace`** under Mono. You get `ex.Message`; deep stacks only on unwound/unhandled throws. Use `CaptureStack()` at the catch site if you need the frames.
+Under Mono a first-chance exception has a **null `StackTrace`**, so Uriel captures `Environment.StackTrace` (which includes the throw site) for the first `ExceptionStackLimit` (default 5) of each type+message. After that you get the message only. Raise `ExceptionStackLimit` if you need more, or use `CaptureStack()` at the catch site.
 
 ---
 
@@ -90,13 +90,13 @@ If the server already started with an older JDK: `qorvex -s <session> stop`, the
 
 ## Lines look garbled / sentinel missing on iOS
 
-`os_log` mangles multibyte UTF-8 on long lines. That's why the sentinel is **ASCII** and payloads are **base64**. If you changed `Sentinel` to something non-ASCII, revert it. The parser also falls back to locating `{"s":` directly when the sentinel is mangled. [Wire Format](Wire-Format.md).
+`os_log` mangles multibyte UTF-8 on long lines. That's why the sentinel is **ASCII** and payloads are **base64**. If you changed `Sentinel` to something non-ASCII, revert it. The parser also falls back to locating the `{"p":` (or v0.1.0 `{"s":`) envelope directly when the sentinel is mangled. [Wire Format](Wire-Format.md).
 
 ---
 
 ## Losing samples under heavy load
 
-By design: the queue is **drop-on-full** — it loses a sample before stalling your app. Seq gaps in the output reveal it.
+By design: the queue is **drop-on-full** — it loses a sample before stalling your app. Uriel reports it: a `meta` record `dropped-records` (`v` = records lost since the last report, at most once a second).
 
 ✅ **Fix:** raise `QueueCapacity` (costs memory) and/or raise `CounterIntervalSec` to cut volume. [Performance](Performance.md).
 

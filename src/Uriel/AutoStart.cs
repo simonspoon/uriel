@@ -8,7 +8,9 @@ namespace Uriel;
 ///
 /// Caveat (honest): a [ModuleInitializer] only runs once *something* in this
 /// assembly is touched/loaded. Referencing the package but never invoking it may
-/// not load the module. The reliable activation is builder.UseUriel(...).
+/// not load the module. The reliable activations are builder.UseUriel(...) or, with no
+/// code change, &lt;UrielAutoStart&gt;true&lt;/UrielAutoStart&gt; in the app's project file
+/// (buildTransitive/Uriel.Profiler.targets injects a module initializer into the app).
 /// Env autostart is best-effort for "flip it on in the field without a rebuild".
 /// </summary>
 internal static class AutoStart

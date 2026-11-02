@@ -61,11 +61,11 @@ The caller pays for: one struct, an intern lookup, a lock-free enqueue. **That's
 
 | Channel | Steady-state cost |
 |---|---|
-| `Counters` (poll) | a handful of cheap `GC.*` reads + a few enqueues **once per `CounterIntervalSec`** |
+| `Counters` (poll) | a handful of cheap `GC.*` reads + a few enqueues **once per `CounterIntervalSec`**. The precise allocated-bytes read briefly pauses threads on Mono to sum allocation counters — once per interval |
 | `Counters` (EventCounters) | runtime delivers samples on its own timer; we just forward (desktop only) |
-| `Exceptions` | **~zero** until an exception fires |
+| `Exceptions` | **~zero** until an exception fires; a stack walk for the first `ExceptionStackLimit` of each type+message; floods capped per type per second |
 | `Hangs` | one timer tick every `HangThresholdMs/2`; a heartbeat round-trip |
-| `Gc` | bursty — opt-in, heavier, not in `Default` |
+| `Gc` | one small allocation + one record (serialized on the pump) per GC — can be hundreds/sec in allocation-heavy apps; opt-in, not in `Default` |
 | `Mark` / `CaptureStack` | only when you call them (`CaptureStack` walks the stack — don't call in a tight loop) |
 
 > Cheapest knob: **raise `CounterIntervalSec`.** 1 s is fine for most apps; 5 s for a lean production stream.

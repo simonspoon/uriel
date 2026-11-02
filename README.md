@@ -51,7 +51,11 @@ builder.UseUriel(o =>
 });
 ```
 
-**Zero-code (field toggle, best-effort):** set env var `URIEL_AUTOSTART=1`.
+**Zero-code (no call site):** in the app's project file:
+```xml
+<PropertyGroup><UrielAutoStart>true</UrielAutoStart></PropertyGroup>
+```
+The package's `buildTransitive` targets inject a `[ModuleInitializer]` into your app that calls `UrielProfiler.Start()` with defaults (defaults only: don't combine it with `UseUriel(configure)`/`Start(configure)` (the first `Start` wins, so your options would be ignored). C# projects only.). (The `URIEL_AUTOSTART=1` env var alone can't work in an unmodified app: nothing loads the Uriel assembly, so its initializer never runs.)
 
 **On-demand markers anywhere:**
 ```csharp
@@ -63,10 +67,10 @@ UrielProfiler.Mark("frame-time-ms", 16.7);
 
 | Channel | Source | Cost |
 |---|---|---|
-| `Counters` | **all targets:** heap-bytes, alloc-rate-bps, gen0/1/2-gc-count, proc-working-set, gc-committed/fragmented (poll sampler). **desktop bonus:** cpu, gen sizes, jit, threadpool, lock-contention (EventCounters) | periodic, very low |
-| `Exceptions` | first-chance + unhandled, with stack | on event |
-| `Hangs` | UI-thread heartbeat watchdog, reports stall latency (with startup grace) | on event |
-| `Gc` | gc summaries (opt-in, heavier) | burst |
+| `Counters` | **all targets:** heap-bytes, alloc-rate-bps, gen0/1(/2)-gc-count, proc-working-set, jni-gref-count (Android), gc-committed/fragmented (poll sampler). **desktop bonus:** cpu, gen sizes, jit, threadpool, lock-contention (EventCounters) | periodic, very low |
+| `Exceptions` | first-chance + unhandled, with stack (first 5 per type+message), floods throttled to counts | on event |
+| `Hangs` | UI-thread heartbeat watchdog: `ui-stall-begin` at threshold, `ui-stall` with the real stall length | on event |
+| `Gc` | one record per GC: generation, heap, pause time where the runtime reports it (opt-in) | per GC |
 
 > Validated live on an iOS simulator (driven via `qorvex` UI automation): meta,
 > marks, on-demand stacks, exceptions, and the hang watchdog all confirmed in the
@@ -87,10 +91,10 @@ The sentinel is **ASCII** (`@@URIEL@@`) on purpose: `os_log` mangles multibyte
 UTF-8 on long lines, which would break a literal `grep`.
 
 ```
-@@URIEL@@ {"s":1042,"c":[1,3],"d":"<base64 fragment of inner json>"}
+@@URIEL@@ {"p":"9f3a01c2","s":1042,"c":[1,3],"d":"<base64 fragment of inner json>"}
 ```
 
-Reassemble: group by `s`, order by `c[0]`, concat `d`, base64-decode → inner record:
+Reassemble: group by `p` (per-process nonce) + `s`, order by `c[0]`, concat `d`, base64-decode → inner record:
 
 ```json
 {"t":1719400000123,"k":"counter","n":"alloc-rate","v":20480}
@@ -130,8 +134,11 @@ grep '@@URIEL@@' /tmp/uriel.log | python3 tools/uriel_parse.py
 
 v0.1 — validated end-to-end on iOS simulator via `qorvex` automation.
 Memory = managed heap / GC (poll sampler) + desktop EventCounters bonus.
-Native RSS (true process memory via mach/Android P/Invoke) and full GC-event
-decoding are the next pass.
+Native RSS (true process memory via mach/Android P/Invoke) is the next pass.
+
+Runs on .NET 9 and .NET 10 MAUI apps: the package targets `net9.0-*` and pulls
+`Microsoft.Maui.Controls` 9.0.120, which was reported resolving fine in a MAUI
+10.0.100 Release/AOT Android app.
 
 See [CHANGELOG.md](CHANGELOG.md) for release history.
 

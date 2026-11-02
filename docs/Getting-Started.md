@@ -50,11 +50,14 @@ using Uriel;
 UrielProfiler.Start(o => o.Channels = Channels.Counters | Channels.Exceptions);
 ```
 
-### C. Zero-code env toggle (best-effort, field flip)
-```bash
-URIEL_AUTOSTART=1   # starts with defaults when the assembly loads
+### C. Zero-code, build-time (no call site)
+```xml
+<!-- in the APP's .csproj -->
+<PropertyGroup><UrielAutoStart>true</UrielAutoStart></PropertyGroup>
 ```
-> ⚠️ Best-effort only — a `[ModuleInitializer]` runs only once *something* in the Uriel assembly is touched. If you reference the package but never call it, it may not load. **Prefer A.** Details: [AutoStart caveat](Troubleshooting.md#env-autostart-didnt-fire).
+The package's `buildTransitive/Uriel.Profiler.targets` injects a `[ModuleInitializer]` into your app assembly that calls `UrielProfiler.Start()` with defaults. Works for an otherwise unmodified app. It's defaults only: don't combine it with `UseUriel(configure)`/`Start(configure)` (the first `Start` wins, so your options would be ignored). C# projects only.
+
+> The `URIEL_AUTOSTART=1` env var on its own is **not** enough: its initializer lives in the Uriel assembly, which an app that never calls Uriel never loads. Details: [Troubleshooting](Troubleshooting.md#env-autostart-didnt-fire).
 
 > `Start` is **idempotent** — only the first call wins, safe to call from anywhere.
 
@@ -101,7 +104,7 @@ dotnet workload install maui
 dotnet pack src/Uriel/Uriel.csproj -c Release      # → Uriel.Profiler.0.1.0.nupkg
 ```
 
-The project multi-targets `net9.0;net9.0-ios;net9.0-android`. The plain `net9.0` head builds **without** the MAUI workload.
+The project multi-targets `net9.0;net9.0-ios;net9.0-android`. The package also works in .NET 10 MAUI apps (net9 assets resolve under net10). The plain `net9.0` head builds **without** the MAUI workload.
 
 ---
 

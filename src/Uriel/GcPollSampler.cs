@@ -45,10 +45,11 @@ internal sealed class GcPollSampler : IDisposable
             _lastAllocBytes = alloc;
             _lastSampleMs = now;
 
-            // per-gen collection counts (monotonic)
-            Emit(now, "gen0-gc-count", GC.CollectionCount(0));
-            Emit(now, "gen1-gc-count", GC.CollectionCount(1));
-            Emit(now, "gen2-gc-count", GC.CollectionCount(2));
+            // per-gen collection counts (monotonic). Only generations the runtime has:
+            // CoreCLR = gen0/1/2; Mono SGen = gen0 (nursery) + gen1 (major) — asking Mono
+            // for gen2 just clamps to gen1 and would duplicate it.
+            for (int g = 0; g <= MaxGen; g++)
+                Emit(now, GenCountNames[g], GC.CollectionCount(g));
 
             // process working set (RSS-ish) where the platform reports it; 0 on some Mono targets
             long ws = Environment.WorkingSet;
@@ -65,16 +66,32 @@ internal sealed class GcPollSampler : IDisposable
                 }
             }
             catch { /* not available on this runtime */ }
+
+#if ANDROID
+            // JNI global refs = live Java<->managed peers; growth here is bridge/peer churn.
+            try
+            {
+                var rt = Java.Interop.JniRuntime.CurrentRuntime;
+                Emit(now, "jni-gref-count", rt.GlobalReferenceCount);
+                Emit(now, "jni-weak-gref-count", rt.WeakGlobalReferenceCount);
+            }
+            catch { /* runtime not ready */ }
+#endif
         }
         catch { /* a profiler must never crash its host */ }
     }
+
+    private static readonly int MaxGen = Math.Clamp(GC.MaxGeneration, 0, 2);
+    private static readonly string[] GenCountNames = { "gen0-gc-count", "gen1-gc-count", "gen2-gc-count" };
 
     private void Emit(long t, string name, double val) =>
         _sink.Enqueue(new Record(t, RecKind.Counter, string.Intern(name), val));
 
     private static long SafeAllocatedBytes()
     {
-        try { return GC.GetTotalAllocatedBytes(precise: false); }
+        // precise: the imprecise count only advances at GC boundaries on Mono, which makes
+        // alloc-rate-bps read 0 then spike. One precise read per interval is cheap.
+        try { return GC.GetTotalAllocatedBytes(precise: true); }
         catch { return 0; }
     }
 

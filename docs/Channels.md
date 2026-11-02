@@ -8,7 +8,7 @@ Four channels. Each maps to a collector. This page = what each one **emits**, wh
  Channels.Counters  ──►  GcPollSampler  +  RuntimeCounterListener   (periodic)
  Channels.Exceptions ─►  EventHooks  (first-chance + unhandled)     (on event)
  Channels.Hangs      ─►  EventHooks  (UI-thread watchdog)           (on event)
- Channels.Gc         ─►  gc summaries                               (burst, opt-in)
+ Channels.Gc         ─►  GcEventSampler  (one record per GC)        (per GC, opt-in)
 
  + always available:  UrielProfiler.Mark()  /  .CaptureStack()      (on demand)
 ```
@@ -17,12 +17,12 @@ Each record carries a **kind** (`k`). See [Wire Format](Wire-Format.md) for the 
 
 | `k` | `RecKind` | Emitted by | Channel |
 |---|---|---|---|
-| `meta` | `Meta` | session start / config echo | always |
+| `meta` | `Meta` | session start / config echo, `dropped-records` | always |
 | `counter` | `Counter` | poll sampler, EventCounters, `Mark()` | `Counters` |
 | `stack` | `Stack` | `CaptureStack()` | always (on demand) |
 | `exception` | `Exception` | first-chance + unhandled hooks | `Exceptions` |
 | `hang` | `Hang` | UI watchdog | `Hangs` |
-| `gc` | `Gc` | gc summaries | `Gc` |
+| `gc` | `Gc` | one record per GC | `Gc` |
 
 ---
 
@@ -36,11 +36,13 @@ Polls always-available `GC.*` APIs on a timer (`CounterIntervalSec`). [Source](.
 | Counter name (`n`) | Meaning | Notes |
 |---|---|---|
 | `heap-bytes` | managed heap retained now | `GC.GetTotalMemory(false)` |
-| `alloc-total-bytes` | cumulative bytes allocated | monotonic |
+| `alloc-total-bytes` | cumulative bytes allocated | monotonic; `GetTotalAllocatedBytes(precise: true)` so it moves between GCs on Mono |
 | `alloc-rate-bps` | derived allocation rate, **bytes/sec** | computed between samples |
-| `gen0-gc-count` | gen-0 collections | monotonic |
-| `gen1-gc-count` | gen-1 collections | monotonic |
-| `gen2-gc-count` | gen-2 collections | monotonic |
+| `gen0-gc-count` | gen-0 collections | monotonic. On Mono = nursery (minor) |
+| `gen1-gc-count` | gen-1 collections | monotonic. On Mono = major |
+| `gen2-gc-count` | gen-2 collections | monotonic. **CoreCLR only** — emitted for generations up to `GC.MaxGeneration`; Mono SGen has two, so no gen2 there |
+| `jni-gref-count` | JNI global references (live Java↔managed peers) | **Android only**, `JniRuntime.CurrentRuntime.GlobalReferenceCount` |
+| `jni-weak-gref-count` | JNI weak global references | **Android only** |
 | `proc-working-set` | process RSS-ish | **only when platform reports it** — Android yes (~163 MB), iOS=0 so **omitted** |
 | `gc-committed-bytes` | committed heap | from `GC.GetGCMemoryInfo()` when available |
 | `gc-fragmented-bytes` | fragmented heap | ditto |
@@ -70,10 +72,13 @@ methods-jitted-count · time-in-jit · gen-0-gc-budget
 
 | Event | `n` | `v` | `x` |
 |---|---|---|---|
-| `FirstChanceException` | exception type name | `0` | `"{Message}\n{StackTrace}"` |
+| `FirstChanceException` | exception type name | `0` | `"{Message}\n{stack}"` |
+| (throttled first-chance) | `"first-chance-suppressed"` | count in the last second | exception type name |
 | `UnhandledException` | `"Unhandled"` | `1` | `"{FullName}: {Message}\n{StackTrace}"` |
 
-> ⚠️ **Mono caveat:** a first-chance exception caught immediately has a **null `StackTrace`** under Mono — you get the message, deep stack only on unwound/unhandled throws. See [Platform Support](Platform-Support.md#honest-caveats).
+**Stacks.** Mono leaves `ex.StackTrace` null at first chance, so for the first `ExceptionStackLimit` (default 5) occurrences of each type+message (tracked for up to 1024 distinct type+message pairs; messages that embed ids use them up fast) Uriel records `Environment.StackTrace` instead — it includes the throw site (under a couple of Uriel/handler frames). Later repeats carry `ex.StackTrace`, which is null on Mono.
+
+**Floods.** At most `ExceptionMaxPerSec` (default 20) full records per second **per type** (short type name; the window resets each second, so a burst can reach ~2× across a boundary). The rest are counted and emitted once a second as one `first-chance-suppressed` record per type, so a storm (e.g. thousands of `ArgumentOutOfRangeException`/s) costs a few lines, not thousands, and doesn't hide other exception types.
 
 ```json
 {"k":"exception","n":"InvalidOperationException","v":0,"x":"demo fault\n","seq":173}
@@ -83,16 +88,20 @@ methods-jitted-count · time-in-jit · gen-0-gc-budget
 
 ## `Hangs` — UI-thread watchdog
 
-Round-trips a heartbeat through the MAUI main thread. If the pong doesn't return within `HangThresholdMs`, the UI thread is stalled → emit a `hang` with the observed latency.
+Round-trips a heartbeat through the MAUI main thread and keeps the heartbeat's post time until the pong comes back, so each stall is measured end to end — two records per stall:
 
 ```
  bg timer (period = HangThresholdMs/2)
    │  post heartbeat ─────► MainThread.BeginInvokeOnMainThread(pong)
    │                              │
-   │  next tick: pong back?  ◄────┘   yes → fine, re-arm
-   │            no, waited ≥ threshold AND past startup grace
-   ▼
-  emit  {"k":"hang","n":"ui-stall","v":<ms waited>,"x":"UI thread did not service heartbeat..."}
+   │  tick: pong back?            │
+   │    no, waited ≥ threshold (first time, past startup grace)
+   │      → emit "ui-stall-begin"  v = ms waited so far   (last-known state if the app dies mid-freeze)
+   │    still no → keep waiting, emit nothing
+   │                              ▼
+   │                         pong runs on UI thread:
+   │                           stalled ≥ threshold → emit "ui-stall"  v = real stall length (ms)
+   ▼  next tick posts a fresh heartbeat
 ```
 
 | Knob | Effect |
@@ -100,19 +109,35 @@ Round-trips a heartbeat through the MAUI main thread. If the pong doesn't return
 | `HangThresholdMs` (250) | how long a stall must be to count |
 | `HangStartupGraceMs` (3000) | ignore stalls this long after `Start` (UI booting) |
 
-Guards built in: re-arms after firing so it **won't spam** every tick of one hang; stays quiet on desktop (no UI dispatcher — `#if HAS_MAUI`).
+A 14 s freeze gives one `ui-stall-begin` (v≈250) and one `ui-stall` (v≈14000), not a run of capped records. Precision is about one timer period (`HangThresholdMs/2`). If no pong arrives within 60 s, Uriel emits `ui-stall` (v = time waited, x says it gave up) and re-arms, so a lost heartbeat can't silence the watchdog.
+
+> ⚠️ Time the app spends suspended in the background counts as stall: a `ui-stall` on resume can span the whole background period. Correlate with your app lifecycle logs (`OnSleep`/`OnResume`). Stays quiet on desktop (no UI dispatcher — `#if HAS_MAUI`).
 
 > Managed code can't cross-thread stack-walk the UI thread on mobile — Uriel reports **latency**, you localize with your own correlated logs.
 
 ```json
-{"k":"hang","n":"ui-stall","v":250,"x":"UI thread did not service heartbeat within threshold","seq":198}
+{"k":"hang","n":"ui-stall-begin","v":250,"x":"UI thread has not serviced heartbeat; stall in progress","seq":198}
+{"k":"hang","n":"ui-stall","v":14003,"x":"UI thread stall, measured heartbeat post to service","seq":231}
 ```
 
 ---
 
-## `Gc` — gc summaries
+## `Gc` — one record per collection
 
-Opt-in (`Channels.Gc`), heavier, bursty. Not in `Default`. Full GC-event decoding is a [next-pass item](Platform-Support.md#roadmap).
+Opt-in (`Channels.Gc`), not in `Default`. [`GcEventSampler`](../src/Uriel/GcEventSampler.cs) uses a finalizer sentinel (no GC event API reaches managed code on Mono), so it works on every runtime. Records are written on the finalizer thread just after the GC.
+
+| `n` | `v` | `x` |
+|---|---|---|
+| `"gc"` | highest generation collected since the last record | `count=N heap=BYTES[ pause-ms=MS]` |
+
+- Volume: one record per GC. An allocation-heavy app can GC hundreds of times a second, which can fill the queue (you'll see `dropped-records`). Enable it for focused runs.
+- `count` > 1 when GCs ran back to back before the finalizer thread caught up.
+- `pause-ms` comes from `GC.GetTotalPauseDuration()` and is omitted where the runtime reports 0.
+- **Not available in-process:** Android GC **bridge** time and native crashes (SGen asserts/SIGSEGV kill the process without running managed code). For those use the Mono GC log (`debug.mono.log=gc`) and the tombstone; the last Uriel record before death (e.g. a `ui-stall-begin`) bounds the time.
+
+```json
+{"k":"gc","n":"gc","v":0,"x":"count=1 heap=19733672 pause-ms=0.321","seq":21}
+```
 
 ---
 
