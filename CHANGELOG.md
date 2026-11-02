@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-02
+
 ### Added
 - `Channels.Gc` now does something: one `gc` record per collection (generation, count, heap, pause-ms where the runtime reports it). It was a no-op before.
 - Hang watchdog measures the whole stall: `ui-stall-begin` when the threshold is crossed, then one `ui-stall` with the real duration when the UI thread answers (previously one capped ~threshold record every ~0.5 s).
